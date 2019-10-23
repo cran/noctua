@@ -20,12 +20,16 @@ access to aws account with permissions allowing you to use Athena.*
 
 ## Installation:
 
-To install `noctua` (currently not on cran):
-
+To install `noctua` you can get it from CRAN with:
 ``` r
-# The development version from Github
+install.packages("noctua")
+```
+
+Or to get the development version from Github with:
+```r
 remotes::install_github("dyfanjones/noctua")
 ```
+
 
 ## Connection Methods
 
@@ -483,8 +487,3 @@ delete_work_group(con, "demo_work_group")
 ## Comparison:
 
 `noctua` is basically the same as `RAthena` however it utilises the R AWS SDK `paws` to achieve the same goal.
-
-# To Do list:
-
-  - Upload package to cran
-  - Add a logo (as everyone loves a logo)
