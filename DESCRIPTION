@@ -2,7 +2,7 @@ Package: noctua
 Type: Package
 Title: Connect to 'AWS Athena' using R 'AWS SDK' 'paws' ('DBI'
         Interface)
-Version: 1.1.0
+Version: 1.2.0
 Authors@R: person("Dyfan", "Jones", email="dyfan.r.jones@gmail.com", 
                   role= c("aut", "cre"))
 Description: Designed to be compatible with the 'R' package 'DBI' (Database Interface)
@@ -23,8 +23,8 @@ Collate: 'noctua.R' 'Driver.R' 'Connection.R' 'DataTypes.R' 'Result.R'
         'Table.R' 'athena_low_api.R' 'dplyr_integration.R' 'utils.R'
         'zzz.R'
 NeedsCompilation: no
-Packaged: 2019-10-23 13:42:18 UTC; lmar763
+Packaged: 2019-11-14 10:41:19 UTC; lmar763
 Author: Dyfan Jones [aut, cre]
 Maintainer: Dyfan Jones <dyfan.r.jones@gmail.com>
 Repository: CRAN
-Date/Publication: 2019-10-23 14:30:02 UTC
+Date/Publication: 2019-11-14 11:10:02 UTC
