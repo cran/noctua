@@ -1,12 +1,12 @@
-77e41f3ab83ab5d256cd0150f2226409 *DESCRIPTION
+e1f549cac0fa62b184e9477b0ded26fc *DESCRIPTION
 c4afaa2ab9feac5091df86cf1758cb78 *LICENSE
 c6dd2f7a667a8389f57e268186f92d89 *NAMESPACE
-5aabcf06c36bb42c4eee619b8cb618ce *NEWS.md
+5b6d975d6b84773e47f6faf48c19ca1d *NEWS.md
 7d25326f26692544ea497fee1d95bdbe *R/Connection.R
 9e53fa442f327687d92aca8d87d7bb42 *R/DataTypes.R
 0c8867ce94a415c9a7c0fbd449c56df4 *R/Driver.R
 a802df512582b854c490f434bedef224 *R/Result.R
-d9737a2210aeff51fc53807eca0a5e26 *R/Table.R
+d4c96f1912a210ae837bc0239fce9af2 *R/Table.R
 65f11837312077f31b9be1787ce59890 *R/athena_low_api.R
 ca5f8c0e19eb0bb81e538fd91265d721 *R/dplyr_integration.R
 74f731a3a05fe97ec11bdacce4c951ef *R/noctua.R
@@ -15,7 +15,7 @@ aedaff3dcb0a56e21c78fbcdcce21286 *R/utils.R
 83496701d14afe8825f5b9869ec307d3 *README.md
 23cde31d695a8b7160f7656fddc388b7 *man/AthenaConnection.Rd
 aa9f2846ae3410a80f1b2cb5c2a17432 *man/AthenaDriver.Rd
-fb7a21e9374e76a9b9a09909e1ff6ea4 *man/AthenaWriteTables.Rd
+f2ccb998f4e80e624092c618e29eae43 *man/AthenaWriteTables.Rd
 9ac1d357d418ae7b3894f42812fbecaa *man/Query.Rd
 efe8d34c9cf99cfe62867ae44373aa28 *man/assume_role.Rd
 cc55f42fe401c71a4f849784befe5a14 *man/athena.Rd
@@ -43,7 +43,7 @@ d2f228bbe7d1c1dead40e8216b2321b0 *man/db_save_query.Rd
 2493c5940d87d574663ac0194f091ae9 *man/figures/logo.png
 a4c5a1b782a1f84c2cfd509c0cfc0d8e *man/noctua-package.Rd
 c37ca5540156e1bde24025bc179e0797 *man/session_token.Rd
-206da029ee263f09655cc5ee9d838650 *man/sqlCreateTable.Rd
+edc111a9a967eedc6f1566920a8d551e *man/sqlCreateTable.Rd
 a524fa6c31cabd87baa4a50684cc2929 *man/sqlData.Rd
 1fff285eb36dd346d439a11399b7fadb *man/work_group.Rd
 1c522dc50948a048556000f71d997a01 *tests/testthat.R
