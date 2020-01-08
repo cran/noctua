@@ -55,7 +55,7 @@ AthenaConnection <-
     
     s3_staging_dir <- s3_staging_dir %||% get_aws_env("AWS_ATHENA_S3_STAGING_DIR")
     
-    if(is.null(s3_staging_dir)) {stop("Please set `s3_staging_dir` either in parameter `s3_staging_dir`, evnironmental varaible `AWS_ATHENA_S3_STAGING_DIR`",
+    if(is.null(s3_staging_dir)) {stop("Please set `s3_staging_dir` either in parameter `s3_staging_dir`, environmental varaible `AWS_ATHENA_S3_STAGING_DIR`",
                                       "or when work_group is defined in `create_work_group()`", call. = F)}
     
     info <- list(profile_name = prof_name, s3_staging = s3_staging_dir,
@@ -117,7 +117,9 @@ setMethod(
   function(conn, ...) {
     if (!dbIsValid(conn)) {
       warning("Connection already closed.", call. = FALSE)
-    } else {eval.parent(substitute(conn@ptr <- list()))}
+    } else {
+      on_connection_closed(conn)
+      eval.parent(substitute(conn@ptr <- list()))}
     invisible(NULL)
   })
 
@@ -322,6 +324,8 @@ setMethod(
 #' Returns the unquoted names of Athena tables accessible through this connection.
 #' @name dbListTables
 #' @inheritParams DBI::dbListTables
+#' @param schema Athena schema, default set to NULL to return all tables from all Athena schemas.
+#'               Note: The use of DATABASE and SCHEMA is interchangeable within Athena.
 #' @aliases dbListTables
 #' @return \code{dbListTables()} returns a character vector with all the tables from Athena.
 #' @seealso \code{\link[DBI]{dbListTables}}
@@ -348,14 +352,60 @@ NULL
 #' @export
 setMethod(
   "dbListTables", "AthenaConnection",
-  function(conn,...){
+  function(conn, schema = NULL, ...){
     if (!dbIsValid(conn)) {stop("Connection already closed.", call. = FALSE)}
-    tryCatch(Databases <- sapply(conn@ptr$glue$get_databases()$DatabaseList,function(x) x$Name))
-    tryCatch(output <- lapply(Databases, function (x) conn@ptr$glue$get_tables(DatabaseName = x)$TableList))
+    if(is.null(schema)){
+      tryCatch(schema <- sapply(conn@ptr$glue$get_databases()$DatabaseList,function(x) x$Name))}
+    tryCatch(output <- lapply(schema, function (x) conn@ptr$glue$get_tables(DatabaseName = x)$TableList))
     unlist(lapply(output, function(x) sapply(x, function(y) y$Name)))
   }
 )
 
+#' List Athena Schema, Tables and TableTypes
+#'
+#' Method to get Athena schema, tables and table types return as a data.frame
+#' @name dbGetTables
+#' @inheritParams DBI::dbListTables
+#' @param schema Athena schema, default set to NULL to return all tables from all Athena schemas.
+#'               Note: The use of DATABASE and SCHEMA is interchangeable within Athena.
+#' @aliases dbGetTables
+#' @return \code{dbGetTables()} returns a data.frame.
+#' @examples 
+#' \dontrun{
+#' # Note: 
+#' # - Require AWS Account to run below example.
+#' # - Different connection methods can be used please see `noctua::dbConnect` documnentation
+#' 
+#' library(DBI)
+#' library(noctua)
+#' 
+#' # Demo connection to Athena using profile name 
+#' con <- dbConnect(noctua::athena())
+#'              
+#' # Return hierarchy of tables in Athena
+#' dbGetTables(con)
+#' 
+#' # Disconnect conenction
+#' dbDisconnect(con)
+#' }
+NULL
+
+#' @rdname dbGetTables
+#' @export
+setGeneric("dbGetTables", function(conn, ...) standardGeneric("dbGetTables"))
+
+#' @rdname dbGetTables
+#' @export
+setMethod("dbGetTables", "AthenaConnection",
+          function(conn, schema = NULL, ...){
+  if (!dbIsValid(conn)) {stop("Connection already closed.", call. = FALSE)}
+  if(is.null(schema)){
+    tryCatch(schema <- sapply(conn@ptr$glue$get_databases()$DatabaseList,function(x) x$Name))}
+  tryCatch(output <- lapply(schema, function (x) conn@ptr$glue$get_tables(DatabaseName = x)$TableList))
+  rbindlist(lapply(output, function(x) rbindlist(lapply(x, function(y) data.frame(Schema = y$DatabaseName,
+                                                                                  TableName=y$Name,
+                                                                                  TableType = y$TableType)))))
+})
 
 #' List Field names of Athena table
 #'
@@ -510,7 +560,9 @@ setMethod(
       dbms.name <- conn@info$dbms.name
       Table <- name}
     
-    if(delete_data){
+    TableType <- conn@ptr$glue$get_table(DatabaseName = dbms.name, Name = Table)$Table$TableType
+    
+    if(delete_data && TableType == "EXTERNAL_TABLE"){
       nobjects <- 1000 # Only 1000 objects at a time
       while(nobjects >= 1000) {
         tryCatch(
@@ -539,6 +591,7 @@ setMethod(
     dbClearResult(res)
     
     if(!delete_data) message("Info: Only Athena table has been removed.")
+    on_connection_updated(conn, Table)
     invisible(TRUE)
   })
 

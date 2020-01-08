@@ -1,9 +1,34 @@
+# noctua 1.5.0
+Updated package version for cran release
+
+# noctua 1.4.0.9001
+### New Feature
+* Added integration into Rstudio connections tab
+* Added information message of amount of data scanned by aws athena
+* Added method to change backend file parser so user can change file parser from `data.table` to `vroom`. From now on it is possible to change file parser using `noctua_options` for example:
+
+```
+library(noctua)
+
+noctua_options("vroom")
+
+```
+
+* new function `dbGetTables` that returns Athena hierarchy as a data.frame
+
+### Unit tests
+* Added datatransfer unit test for backend file parser vroom
+
+# noctua 1.4.0.9000
+### Documentation
+* Updated rdocumentation to roxygen2 7.0.2
+
 # noctua 1.4.0
 Updated package version for cran release
 
 # noctua 1.3.0.9003
 ### Major Change
-* Default delimited file uploaded to AWS Athena changed from "csv" to "tsv" this is due to separating value "," in character variables. By using "tsv" file type JSON/Array objects can be passed to Athena through character types. To prevent this becoming a breaking change `dbWriteTable` `append` parameter checks and uses existing AWS Athena DDL file type. If `file.type` doesn't match Athena DDL file type then user will recieve a warning message:
+* Default delimited file uploaded to AWS Athena changed from "csv" to "tsv" this is due to separating value "," in character variables. By using "tsv" file type JSON/Array objects can be passed to Athena through character types. To prevent this becoming a breaking change `dbWriteTable` `append` parameter checks and uses existing AWS Athena DDL file type. If `file.type` doesn't match Athena DDL file type then user will receive a warning message:
 
 ```
 warning('Appended `file.type` is not compatible with the existing Athena DDL file type and has been converted to "', File.Type,'".', call. = FALSE)
@@ -148,30 +173,29 @@ dbWriteTable(con, "iris", iris)
 
 # noctua 1.0.9000
 
-## New Features
+### New Features
 * credentials are now passed through the new `config = list()` parameter is `paws` objects
 * `BigInt` are now passed correctly into `integer64`
 
-## Bug
+#### Bug
 * `AthenaResult` returned: `Error in call[[2]] : object of type 'closure' is not subsettable`. The function `do.call` was causing the issue, to address this `do.call` has been removed and the helper function `request` has been broken down into `ResultConfiguration` to return a single component of `start_query_execution`
 * All functions that utilise `do.call` have been broken down due to error: `Error in call[[2]] : object of type 'closure' is not subsettable`
 
-## Unit Tests
+### Unit Tests
 * Added `bigint` to `integer64` in data.transfer unit test
 
-## Minor Change
+### Minor Change
 * dependency `paws` version has been set to a minimum of `0.1.5` due to latest change.
 
-## Major Change
+### Major Change
 * `data.table` is now used as the default file parser `data.table::fread` / `data.table::fwrite`. This isn't a breaking change as `data.table` was used before however this change makes `data.table` to default file parser.
 
 
 # noctua 1.0.0
 * **Initial RAthena release**
 
-## New Features
-
-### DBI
+### New Features
+#### DBI
 * `dbConnect` method can use the following methods:
   * assume role
   * aws profile name
@@ -179,6 +203,6 @@ dbWriteTable(con, "iris", iris)
   * set credentials in system variables
 * Enabled method to upload parquet file format into AWS S3 using `arrow` package
   
-### Athena lower level api
+#### Athena lower level api
 * `assume_role` developed method for user to assume role when connecting to AWS Athena
 * developed methods to create, list, delete and get AWS Athena work groups
