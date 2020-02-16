@@ -1,10 +1,123 @@
-# noctua 1.5.0
-Updated package version for cran release
+# noctua 1.5.1
+## Bug Fix
+* `writeBin`: Only 2^31 - 1 bytes can be written in a single call (and that is the maximum capacity of a raw vector on 32-bit platforms). This means that it will error out with large raw connections. To over come this `writeBin` can be called in chunks. If `readr` is avialable on system then `readr::write_file` is used for extra speed.
 
-# noctua 1.4.0.9001
-### New Feature
+```
+library(readr)
+library(microbenchmark)
+
+# creating some dummy data for testing
+X <- 1e8
+df <- 
+  data.frame(
+    w = runif(X),
+    x = 1:X,
+    y = sample(letters, X, replace = T), 
+    z = sample(c(TRUE, FALSE), X, replace = T))
+write_csv(df, "test.csv")
+
+# read in text file into raw format
+obj <- readBin("test.csv", what = "raw", n = file.size("test.csv"))
+
+format(object.size(obj), units = "auto")
+# 3.3 Gb
+
+# writeBin in a loop
+write_bin <- function(
+  value,
+  filename,
+  chunk_size = 2L ^ 20L) {
+  
+  total_size <- length(value)
+  split_vec <- seq(1, total_size, chunk_size)
+  
+  con <- file(filename, "a+b")
+  on.exit(close(con))
+  
+  sapply(split_vec, function(x){writeBin(value[x:min(total_size,(x+chunk_size-1))],con)})
+  invisible(TRUE)
+}
+
+
+microbenchmark(writeBin_loop = write_bin(obj, tempfile()),
+               readr = write_file(obj, tempfile()),
+               times = 5)
+
+Unit: seconds
+expr       min       lq      mean    median        uq       max neval
+R_loop 41.463273 41.62077 42.265778 41.908908 42.022042 44.313893     5
+readr  2.291571  2.40495  2.496871  2.542544  2.558367  2.686921     5
+```
+
+* Thanks to @OssiLehtinen for fixing date variables being incorrectly translated by `sql_translate_env` (RAthena: [# 44](https://github.com/DyfanJones/RAthena/issues/44))
+
+```
+# Before
+translate_sql("2019-01-01", con = con) -> '2019-01-01'
+# Now
+translate_sql("2019-01-01", con = con) -> DATE '2019-01-01'
+```
+
+* Dependency data.table now restricted to (>=1.12.4) due to file compression being added to `fwrite` (>=1.12.4) https://github.com/Rdatatable/data.table/blob/master/NEWS.md
+* R functions `paste`/`paste0` would use default `dplyr:sql-translate-env` (`concat_ws`). `paste0` now uses Presto's `concat` function and `paste` now uses pipes to get extra flexible for custom separating values.
+
+```
+# R code:
+paste("hi", "bye", sep = "-")
+# SQL translation:
+('hi'||'-'||'bye')
+```
+
+* If table exists and parameter `append` set to `TRUE` then existing s3.location will be utilised (RAthena: [# 73](https://github.com/DyfanJones/RAthena/issues/73))
+* `db_compute` returned table name, however when a user wished to write table to another location (RAthena: [# 74](https://github.com/DyfanJones/RAthena/issues/74)). An error would be raised: `Error: SYNTAX_ERROR: line 2:6: Table awsdatacatalog.default.temp.iris does not exist` This has now been fixed with db_compute returning `dbplyr::in_schema`.
+```
+library(DBI)
+library(dplyr)
+
+con <- dbConnect(RAthena::athena())
+
+tbl(con, "iris") %>%
+  compute(name = "temp.iris")
+```
+* `dbListFields` didn't display partitioned columns. This has now been fixed with the call to AWS Glue being altered to include more metadata allowing for column names and partitions to be returned.
+* RStudio connections tab didn't display any partitioned columns, this has been fixed in the same manner as `dbListFields`
+
+## New Feature
+* `dbStatistics` is a wrapper around `paws` `get_query_execution` to return statistics for `noctua::dbSendQuery` results
+* `dbGetQuery` has new parameter `statistics` to print out `dbStatistics` before returning Athena results.
+* `noctua_options`
+  * Now checks if desired file parser is installed before changed file_parser method
+  * File parser `vroom` has been restricted to >= 1.2.0 due to integer64 support and changes to `vroom` api
+* Thanks to @OssiLehtinen for improving the speed of `dplyr::tbl` when calling Athena when using the ident method (#64): 
+```
+library(DBI)
+library(dplyr)
+
+con <- dbConnect(noctua::athena())
+
+# ident method:
+t1 <- system.time(tbl(con, "iris"))
+
+# sub query method:
+t2 <- system.time(tbl(con, sql("select * from iris")))
+
+# ident method
+user  system elapsed 
+0.082   0.012   0.288 
+
+# sub query method
+user  system elapsed 
+0.993   0.138   3.660 
+```
+  
+## Unit test
+* `dplyr` sql_translate_env: expected results have now been updated to take into account bug fix with date fields
+* S3 upload location: Test if the created s3 location is in the correct location
+
+# noctua 1.5.0
+## New Feature
 * Added integration into Rstudio connections tab
-* Added information message of amount of data scanned by aws athena
+* Added information message of amount of data scanned by AWS Athena
 * Added method to change backend file parser so user can change file parser from `data.table` to `vroom`. From now on it is possible to change file parser using `noctua_options` for example:
 
 ```
@@ -16,60 +129,41 @@ noctua_options("vroom")
 
 * new function `dbGetTables` that returns Athena hierarchy as a data.frame
 
-### Unit tests
-* Added datatransfer unit test for backend file parser vroom
+## Unit tests
+* Added data transfer unit test for backend file parser `vroom`
 
-# noctua 1.4.0.9000
-### Documentation
-* Updated rdocumentation to roxygen2 7.0.2
+## Documentation
+* Updated R documentation to `roxygen2` 7.0.2
 
 # noctua 1.4.0
-Updated package version for cran release
-
-# noctua 1.3.0.9003
-### Major Change
+## Major Change
 * Default delimited file uploaded to AWS Athena changed from "csv" to "tsv" this is due to separating value "," in character variables. By using "tsv" file type JSON/Array objects can be passed to Athena through character types. To prevent this becoming a breaking change `dbWriteTable` `append` parameter checks and uses existing AWS Athena DDL file type. If `file.type` doesn't match Athena DDL file type then user will receive a warning message:
 
 ```
 warning('Appended `file.type` is not compatible with the existing Athena DDL file type and has been converted to "', File.Type,'".', call. = FALSE)
 ```
 
-### Bug fix
-* Due to issue highlighted by @OssiLehtinen in https://github.com/DyfanJones/RAthena/issues/50, special characters have issue being processed when using flat file in the backend.
+## Bug fix
+* Due to issue highlighted by @OssiLehtinen in (RAthena: [# 50](https://github.com/DyfanJones/RAthena/issues/50)), special characters have issue being processed when using flat file in the backend.
+* Fixed issue where row.names not being correctly catered and returning NA in column names (RAthena: [# 41](https://github.com/DyfanJones/RAthena/issues/41))
+* Fixed issue with `INTEGER` being incorrectly translated in `sql_translate_env.R`
+* Fixed issue where `as.character` was getting wrongly translated (RAthena: [# 45](https://github.com/DyfanJones/RAthena/issues/45))
 
-### Unit Tests
+## Unit Tests
 * Special characters have been added to unit test `data-transfer`
+* `dbRemoveTable` new parameters are added in unit test
+* Added row.names to unit test data transfer
+* Updated dplyr `sql_translate_env` until test to cater bug fix
 
-# noctua 1.3.0.9002
-### New Feature
+## New Feature
 * Due to help from @OssiLehtinen, `dbRemoveTable` can now remove S3 files for AWS Athena table being removed.
 
-### Unit Tests
-* `dbRemoveTable` new parameters are added in unit test
-
-# noctua 1.3.0.9001
-### Minor Change
+## Minor Change
 * Added AWS_ATHENA_WORK_GROUP environmental variable support
-
-# noctua 1.3.0.9000
-### Minor Change
-* Removed tolower conversion due to request https://github.com/DyfanJones/RAthena/issues/41
-
-### Bug fixed
-* Fixed issue where row.names not being correctly catered and returning NA in column names https://github.com/DyfanJones/RAthena/issues/41
-* Fixed issue with `INTEGER` being incorrectly translated in `sql_translate_env.R`
-* Fixed issue where `as.character` was getting wrongly translated https://github.com/DyfanJones/RAthena/issues/45
-
-### Unit Tests
-* Added row.names to unit test data transfer
-* Updated dplyr sql_translate_env until test to cater bug fix
-
+* Removed `tolower` conversion due to request (RAthena: [# 41](https://github.com/DyfanJones/RAthena/issues/41))
 
 # noctua 1.3.0
-Updated package version for cran release
-
-# noctua 1.2.1.9004
-### Major Change
+## Major Change
 * `dbWriteTable` now will split `gzip` compressed files to improve AWS Athena performance. By default `gzip` compressed files will be split into 20.
 
 Performance results
@@ -105,48 +199,32 @@ dbWriteTable(con, "test_split1", df, compress = T, overwrite = T) # default will
 
 Added information message to inform user about what files have been added to S3 location if user is overwriting an Athena table.
 
-### Minor Change
+## Minor Change
 * `copy_to` method now supports compress and max_batch, to align with `dbWriteTable`
 
-# noctua 1.2.1.9003
-### Bug Fixed
+## Bug Fix
 * Fixed bug in regards to Athena DDL being created incorrectly when passed from `dbWriteTable`
-
-# noctua 1.2.1.9002
-### Bug Fixed
 * Thanks to @OssiLehtinen for identifying issue around uploading class `POSIXct` to Athena. This class was convert incorrectly and AWS Athena would return NA instead. `noctua` will now correctly convert `POSIXct` to timestamp but will also correct read in timestamp into `POSIXct`
-
 * Thanks to @OssiLehtinen for discovering an issue with `NA` in string format. Before `noctua` would return `NA` in string class as `""` this has now been fixed.
+* When returning a single column data.frame from Athena, `noctua` would translate output into a vector with current the method `dbFetch` n = 0.
+* Thanks to @OssiLehtinen for identifying issue around `sql_translate_env`. Previously `noctua` would take the default `dplyr::sql_translate_env`, now `noctua` has a custom method that uses Data types from: https://docs.aws.amazon.com/athena/latest/ug/data-types.html and window functions from: https://docs.aws.amazon.com/athena/latest/ug/functions-operators-reference-section.html
 
 ### Unit tests
 * `POSIXct` class has now been added to data transfer unit test
-
-# noctua 1.2.1.9001
-### Bug Fixed
-When returning a single column data.frame from Athena, `noctua` would translate output into a vector with current the method `dbFetch` n = 0.
-
-# noctua 1.2.1.9000
-### Bug Fixed
-Thanks to @OssiLehtinen for identifying issue around `sql_translate_env`. Previously `noctua` would take the default `dplyr::sql_translate_env`, now `noctua` has a custom method that uses Data types from: https://docs.aws.amazon.com/athena/latest/ug/data-types.html and window functions from: https://docs.aws.amazon.com/athena/latest/ug/functions-operators-reference-section.html
-
-### Unit tests
-* `dplyr sql_translate_env` tests if R functions are correct translated in to Athena sql syntax.
+* `dplyr sql_translate_env` tests if R functions are correct translated in to Athena `sql` syntax.
 
 # noctua 1.2.1
-### New Features:
+## New Features:
 * Parquet file type can now be compress using snappy compression when writing data to S3.
 
-### Bug fixed
+## Bug fixed
 * Older versions of R are returning errors when function `dbWriteTable` is called. The bug is due to function `sqlCreateTable` which `dbWriteTable` calls. Parameters `table` and `fields` were set to `NULL`. This has now been fixed.
 
 # noctua 1.2.0
-Updated package version for cran release
-
-# noctua 1.1.0.9001
-### Minor Change
+## Minor Change
 * `s3.location` parameter is `dbWriteTable` can now be made nullable
 
-### Backend Change
+## Backend Change
 * helper function `upload_data` has been rebuilt and removed the old "horrible" if statement with `paste` now the function relies on `sprintf` to construct the s3 location path. This method now is a lot clearer in how the s3 location is created plus it enables a `dbWriteTable` to be simplified. `dbWriteTable` can now upload data to the default s3_staging directory created in `dbConnect` this simplifies `dbWriteTable` to :
 ```
 library(DBI)
@@ -155,47 +233,40 @@ con <- dbConnect(noctua::athena())
 
 dbWriteTable(con, "iris", iris)
 ```
-### Bug Fix
+## Bug Fix
 * Info message wasn't being return when colnames needed changing for Athena DDL
 
-### Unit Tests
+## Unit Tests
 * `data transfer` test now tests compress, and default s3.location when transferring data
 
-# noctua 1.1.0.9000
-### New Feature
+## New Feature
 * GZIP compression is now supported for "csv" and "tsv" file format in `dbWriteTable`
 
-### Minor Change
-* `sqlCreateTable` info message will now only inform user if colnames have changed and display the colname that have changed
+## Minor Change
+* `sqlCreateTable` info message will now only inform user if colnames have changed and display the column name that have changed
 
 # noctua 1.1.0
-* Increment package version from dev version to cran
-
-# noctua 1.0.9000
-
-### New Features
+## New Features
 * credentials are now passed through the new `config = list()` parameter is `paws` objects
 * `BigInt` are now passed correctly into `integer64`
 
-#### Bug
+### Bug fix
 * `AthenaResult` returned: `Error in call[[2]] : object of type 'closure' is not subsettable`. The function `do.call` was causing the issue, to address this `do.call` has been removed and the helper function `request` has been broken down into `ResultConfiguration` to return a single component of `start_query_execution`
 * All functions that utilise `do.call` have been broken down due to error: `Error in call[[2]] : object of type 'closure' is not subsettable`
 
-### Unit Tests
+## Unit Tests
 * Added `bigint` to `integer64` in data.transfer unit test
 
-### Minor Change
+## Minor Change
 * dependency `paws` version has been set to a minimum of `0.1.5` due to latest change.
 
-### Major Change
+## Major Change
 * `data.table` is now used as the default file parser `data.table::fread` / `data.table::fwrite`. This isn't a breaking change as `data.table` was used before however this change makes `data.table` to default file parser.
 
 
 # noctua 1.0.0
-* **Initial RAthena release**
-
-### New Features
-#### DBI
+## New Features
+### DBI
 * `dbConnect` method can use the following methods:
   * assume role
   * aws profile name
@@ -203,6 +274,6 @@ dbWriteTable(con, "iris", iris)
   * set credentials in system variables
 * Enabled method to upload parquet file format into AWS S3 using `arrow` package
   
-#### Athena lower level api
+### Athena lower level api
 * `assume_role` developed method for user to assume role when connecting to AWS Athena
 * developed methods to create, list, delete and get AWS Athena work groups

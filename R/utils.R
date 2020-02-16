@@ -167,11 +167,33 @@ cred_set <- function(aws_access_key_id,
 # Format DataScannedInBytes to a more readable format: 
 data_scanned <- 
   function (x) {
-    standard <- "legacy"
     base <- 1024
     units_map <- c("B", "KB", "MB", "GB", "TB", "PB")
     power <- if (x <= 0) 0L else min(as.integer(log(x, base = base)), length(units_map) - 1L)
     unit <- units_map[power + 1L]
-    if (power == 0 && standard == "legacy") unit <- "Bytes"
+    if (power == 0) unit <- "Bytes"
     paste(round(x/base^power, digits = 2), unit)
   }
+
+# Write large raw connections in chunks
+write_bin <- function(
+  value,
+  filename,
+  chunk_size = 2L ^ 20L) {
+  
+  # if readr is avialable then use readr::write_file else loop writeBin
+  if (requireNamespace("readr", quietly = TRUE)) {
+    write_file <- pkg_method("write_file", "readr")
+    write_file(value, filename)
+    return(invisible(TRUE))}
+  
+  total_size <- length(value)
+  split_vec <- seq(1, total_size, chunk_size)
+  
+  con <- file(filename, "a+b")
+  on.exit(close(con))
+  
+  if (length(split_vec) == 1) writeBin(value,con) 
+  else sapply(split_vec, function(x){writeBin(value[x:min(total_size,(x+chunk_size-1))],con)})
+  invisible(TRUE)
+}

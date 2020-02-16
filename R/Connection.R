@@ -8,7 +8,7 @@ NULL
 #' @slot ptr a list of connecting objects from the SDK paws package.
 #' @slot info a list of metadata objects
 #' @slot connection contains the \code{AthenaConnection} class object
-#' @slot quote syntax to quote sql query when creating athena ddl
+#' @slot quote syntax to quote sql query when creating Athena ddl
 #' @name AthenaConnection
 #' @keywords internal
 #' @inheritParams methods::show
@@ -361,7 +361,7 @@ setMethod(
   }
 )
 
-#' List Athena Schema, Tables and TableTypes
+#' List Athena Schema, Tables and Table Types
 #'
 #' Method to get Athena schema, tables and table types return as a data.frame
 #' @name dbGetTables
@@ -454,8 +454,11 @@ setMethod("dbListFields", c("AthenaConnection", "character") ,
             
             tryCatch(
               output <- conn@ptr$glue$get_table(DatabaseName = dbms.name,
-                                       Name = Table)$Table$StorageDescriptor$Columns)
-            sapply(output, function(y) y$Name)
+                                               Name = Table)$Table)
+            col_names = vapply(output$StorageDescriptor$Columns, function(y) y$Name, FUN.VALUE = character(1))
+            partitions = vapply(output$PartitionKeys,function(y) y$Name, FUN.VALUE = character(1))
+            
+            c(col_names, partitions)
           })
 
 #' Does Athena table exist?
@@ -599,6 +602,7 @@ setMethod(
 #'
 #' @name dbGetQuery
 #' @inheritParams DBI::dbGetQuery
+#' @param statistics If set to \code{TRUE} will print out AWS Athena statistics of query.
 #' @return \code{dbGetQuery()} returns a dataframe.
 #' @seealso \code{\link[DBI]{dbGetQuery}}
 #' @examples
@@ -626,10 +630,13 @@ NULL
 setMethod(
   "dbGetQuery", c("AthenaConnection", "character"),
   function(conn,
-           statement = NULL, ...){
+           statement = NULL, 
+           statistics = FALSE, ...){
     if (!dbIsValid(conn)) {stop("Connection already closed.", call. = FALSE)}
+    stopifnot(is.logical(statistics))
     rs <- dbSendQuery(conn, statement = statement)
     on.exit(dbClearResult(rs))
+    if(statistics) print(dbStatistics(rs))
     dbFetch(res = rs, n = -1, ...)
   })
 
