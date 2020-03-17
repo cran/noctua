@@ -14,7 +14,7 @@ test_that("Testing data transfer between R and athena vroom", {
   noctua_options("vroom")
   # Test connection is using AWS CLI to set profile_name 
   con <- dbConnect(athena(),
-                   s3_staging_dir = Sys.getenv("rathena_s3_query"))
+                   s3_staging_dir = Sys.getenv("noctua_s3_query"))
   
   df <- data.frame(w = as.POSIXct((Sys.time() -9):Sys.time(), origin = "1970-01-01"),
                    x = 1:10,
@@ -54,11 +54,4 @@ test_that("Testing data transfer between R and athena vroom", {
   expect_equal(test_df2, sqlData(con, df))
   expect_equal(test_df3,df2)
   expect_equal(test_df4, sqlData(con, mtcars))
-  
-  # clean up system environmental variables
-  Sys.unsetenv("AWS_ACCESS_KEY_ID")
-  Sys.unsetenv("AWS_SECRET_ACCESS_KEY")
-  Sys.unsetenv("AWS_SESSION_TOKEN")
-  Sys.unsetenv("AWS_PROFILE")
-  Sys.unsetenv("AWS_REGION")
 })

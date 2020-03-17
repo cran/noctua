@@ -112,17 +112,15 @@ AthenaListObjects.default <- function(connection, database = NULL, name = NULL, 
 
 # given a connection, returns its "host name" (a unique string which identifies it)
 computeHostName <- function(connection) {
-  get_region <- pkg_method("get_region", "paws.common")
   paste(collapse = "_",c(
     connection@info$profile_name,
     "Athena",
-    get_region(connection@info$profile_name)
+    connection@info$region_name
   ))
 }
 
 computeDisplayName <- function(connection) {
-  get_region <- pkg_method("get_region", "paws.common")
-  paste0("AWS Region: ", get_region(connection@info$profile_name))
+  paste0("AWS Region: ", connection@info$region_name)
 }
 
 # selects the table or view from arguments
@@ -149,9 +147,8 @@ AthenaListColumns.default <- function(connection, table = NULL, view = NULL, dat
     
     output <- glue$get_table(DatabaseName = database, Name = table %||% view)$Table
     
-    col_names <- sapply(output$StorageDescriptor$Columns, function(x){names(x$Type) = x$Name; x$Type})
-    partition <- unlist(sapply(output$PartitionKeys, function(x){names(x$Type) = x$Name; x$Type}))
-    
+    col_names <- sapply(output$StorageDescriptor$Columns, ColMeta)
+    partition <- unlist(sapply(output$PartitionKeys, ColMeta))
 
     tbl_meta <- c(col_names, partition)
     data.frame(
@@ -171,7 +168,7 @@ AthenaTableTypes <- function(connection, database = NULL, name = NULL, ...) {
   if(is.null(database)) database <- sapply(glue$get_databases()$DatabaseList,function(x) x$Name)
   if(is.null(name)){
     output <- lapply(database, function (x) glue$get_tables(DatabaseName = x)$TableList)
-    tbl_meta <- unlist(lapply(output, function(x) sapply(x, function(y) {names(y$TableType) = y$Name; y$TableType})))}
+    tbl_meta <- unlist(lapply(output, function(x) sapply(x, TblMeta)))}
   else{
     output <- glue$get_table(DatabaseName = database, Name = name)$Table
     tbl_meta <- output$TableType
@@ -384,3 +381,13 @@ on_connection_opened <- function(connection) {
   )
 }
 # nocov end 
+
+TblMeta <- function(x) {
+  tbl_type <- x$TableType %||% ""
+  names(tbl_type) <- x$Name
+  tbl_type}
+
+ColMeta <- function(x){
+  col_type <- x$Type %||% ""
+  names(col_type) <- x$Name
+  col_type} 
