@@ -29,14 +29,16 @@ AthenaConnection <-
     s3_staging_dir = NULL,
     region_name = NULL,
     profile_name = NULL, 
-    aws_expiration = NULL,...){
+    aws_expiration = NULL,
+    keyboard_interrupt = NULL,
+    ...){
     
     # get lower level paws methods
     get_region <- pkg_method("get_region", "paws.common")
     get_profile_name <- pkg_method("get_profile_name", "paws.common")
     
     # get region name
-    RegionName <- region_name %||% get_region(profile_name)
+    RegionName <- (region_name %||% get_region(profile_name)) %||% get_aws_env("AWS_DEFAULT_REGION")
     
     # get profile_name
     prof_name <- if(!(is.null(aws_access_key_id) || is.null(aws_secret_access_key) || is.null(aws_session_token))) NULL else get_profile_name(profile_name)
@@ -67,6 +69,7 @@ AthenaConnection <-
                  dbms.name = schema_name, work_group = work_group %||% "primary",
                  poll_interval = poll_interval, encryption_option = encryption_option,
                  kms_key = kms_key, expiration = aws_expiration,
+                 keyboard_interrupt = keyboard_interrupt,
                  region_name = RegionName)
     
     res <- new("AthenaConnection",  ptr = ptr, info = info, quote = "`")
