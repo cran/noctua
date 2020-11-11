@@ -1,3 +1,48 @@
+# noctua 1.9.0
+## Minor Change:
+* `dbRemoveTable` now removes AWS S3 objects using `delete_objects` instead of `delete_object`. This allows `noctua` to delete AWS S3 files in batches. This will reduce the number of api calls to AWS and comes with a performance improvement.
+```r
+library(DBI)
+library(data.table)
+
+X <- 1010
+value <- data.table(x = 1:X,
+                    y = sample(letters, X, replace = T), 
+                    z = sample(c(TRUE, FALSE), X, replace = T))
+
+con <- dbConnect(noctua::athena())
+
+# create a removable table with 1010 parquet files in AWS S3.
+dbWriteTable(con, "rm_tbl", value, file.type = "parquet", overwrite = T, max.batch = 1)
+
+# old method: delete_object
+system.time({dbRemoveTable(con, "rm_tbl", confirm = T)})
+# user  system elapsed 
+# 31.004   8.152 115.906 
+
+# new method: delete_objects
+system.time({dbRemoveTable(con, "rm_tbl", confirm = T)})
+# user  system elapsed 
+# 17.319   0.370  22.709 
+```
+
+## New Feature
+* Move `sql_escape_date` into `dplyr_integration.R` backend (RAthena: [# 121](https://github.com/DyfanJones/RAthena/issues/121)).
+* Allow noctua to append to a static AWS s3 location using uuid
+
+## Bug Fix:
+* parquet file.types now use parameter `use_deprecated_int96_timestamps` set to `TRUE`. This puts POSIXct data type in to `java.sql.Timestamp` compatible format, such as `yyyy-MM-dd HH:mm:ss[.f...]`. Thanks to Christian N Wolz for highlight this issue.
+* When more than 1000 files exist in the back of an Athena table. `dbRemoveTable` will ask the user twice to confirm if they wish to remove the backend files:
+```
+Info: The S3 objects in prefix will be deleted:
+  s3://bucket/path/schema/table
+Info: The S3 objects in prefix will be deleted:
+  s3://bucket/path/schema/table
+```
+To overcome this `dbRemoveTable` will opt for `paws::s3()$list_objects_v2` instead of `paws::s3()$list_objects` when listing s3 objects to be deleted. This allows `noctua` to iterate over AWS s3 prefix using tokens, instead of deleting objects in chunks.
+* `s3_upload_location` simplified how s3 location is built. Now s3.location parameter isn't affected and instead only additional components e.g. name, schema and partition.
+* `dbplyr v-2.0.0` function `in_schema` now wraps strings in quotes, this breaks `db_query_fields.AthenaConnection`. Now `db_query_fields.AthenaConnection` removes any quotation from the string so that it can search `AWS GLUE` for table metadata. (#117)
+
 # noctua 1.8.1
 ## Bug Fix
 * Pass a uuid string to `start_query_execution` parameter `ClientRequestToken`. This so that the `ClientRequestToken` is "A unique case-sensitive string used to ensure the request to create the query is idempotent (executes only once)." (#104)
