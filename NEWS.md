@@ -1,3 +1,33 @@
+# noctua 1.10.0
+## New Feature
+* Added optional formatting to `dbGetPartition`. This simply tidies up the default AWS Athena partition format.
+```
+library(DBI)
+library(noctua)
+con <- dbConnect(athena())
+dbGetPartition(con, "test_df2", .format = T)
+# Info: (Data scanned: 0 Bytes)
+#    year month day
+# 1: 2020    11  17
+dbGetPartition(con, "test_df2")
+# Info: (Data scanned: 0 Bytes)
+#                    partition
+# 1: year=2020/month=11/day=17
+```
+* Support different formats for returning `bigint`, this is to align with other DBI interfaces i.e. `RPostgres`. Now `bigint` can be return in the possible formats: ["integer64", "integer", "numeric", "character"]
+```
+library(DBI)
+con <- dbConnect(noctua::athena(), bigint = "numeric")
+```
+When switching between the different file parsers the `bigint` to be represented according to the file parser i.e. `data.table`: "integer64" -> `vroom`: "I".
+
+## Bug Fix:
+* `dbRemoveTable`: Check if key has "." or ends with "/" before adding "/" to the end (#125)
+* Added `uuid` minimum version to fix issue (#128)
+
+## Documentation:
+* Added note to dbRemoveTable doc string around aws athena table Location in Amazon S3.
+
 # noctua 1.9.1
 ## Note:
 * Added package checks to unit tests when testing a suggested dependency. This is to fix "CRAN Package Check Results for Package noctua" for operating system "r-patched-solaris-x86". Error message:
@@ -121,7 +151,7 @@ dbFetch(res, 5000)
 
 # noctua 1.6.0
 ## New Feature
-* Inspired by `pyathena`, `noctua_options` now has a new paramter `cache_size`. This implements local caching in R environments instead of using AWS `list_query_executions`. This is down to `dbClearResult` clearing S3's Athena output when caching isn't disabled
+* Inspired by `pyathena`, `noctua_options` now has a new parameter `cache_size`. This implements local caching in R environments instead of using AWS `list_query_executions`. This is down to `dbClearResult` clearing S3's Athena output when caching isn't disabled
 * `noctua_options` now has `clear_cache` parameter to clear down all cached data.
 * `dbRemoveTable` now utilise `AWS Glue` to remove tables from `AWS Glue` catalog. This has a performance enhancement:
 
