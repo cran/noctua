@@ -84,7 +84,7 @@ setMethod(
 #'                     To set profile name, the \href{https://aws.amazon.com/cli/}{AWS Command Line Interface} (AWS CLI) will need to be configured.
 #'                     To configure AWS CLI please refer to: \href{https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html}{Configuring the AWS CLI}.
 #' @param role_arn The Amazon Resource Name (ARN) of the role to assume (such as \code{arn:aws:sts::123456789012:assumed-role/role_name/role_session_name})
-#' @param role_session_name An identifier for the assumed role session. By default `RAthena` creates a session name \code{sprintf("RAthena-session-\%s", as.integer(Sys.time()))}
+#' @param role_session_name An identifier for the assumed role session. By default `noctua` creates a session name \code{sprintf("noctua-session-\%s", as.integer(Sys.time()))}
 #' @param duration_seconds The duration, in seconds, of the role session. The value can range from 900 seconds (15 minutes) up to the maximum session duration setting for the role. 
 #'                         This setting can have a value from 1 hour to 12 hours. By default duration is set to 3600 seconds (1 hour). 
 #' @param s3_staging_dir The location in Amazon S3 where your query results are stored, such as \code{s3://path/to/query/bucket/}
@@ -93,7 +93,15 @@ setMethod(
 #' @param bigint The R type that 64-bit integer types should be mapped to,
 #'   default is [bit64::integer64], which allows the full range of 64 bit
 #'   integers.
+#' @param binary The R type that [binary/varbinary] types should be mapped to,
+#'   default is [raw]. If the mapping fails R will resort to [character] type.
+#'   To ignore data type conversion set to ["character"].
+#' @param json Attempt to converts AWS Athena data types [arrays, json] using \code{jsonlite:parse_json}. If the mapping fails R will resort to [character] type.
+#'   Custom Json parsers can be provide by using a function with data frame parameter.
+#'   To ignore data type conversion set to ["character"].
 #' @param keyboard_interrupt Stops AWS Athena process when R gets a keyboard interrupt, currently defaults to \code{TRUE}
+#' @param rstudio_conn_tab Optional to get AWS Athena Schema and display it in RStudio's Connections Tab.
+#'   Default set to \code{TRUE}.
 #' @param ... other parameters for \code{paws} session
 #' @aliases dbConnect
 #' @return \code{dbConnect()} returns a s4 class. This object is used to communicate with AWS Athena.
@@ -143,7 +151,10 @@ setMethod(
            s3_staging_dir = NULL,
            region_name = NULL,
            bigint = c("integer64", "integer", "numeric", "character"),
+           binary = c("raw", "character"),
+           json = c("auto", "character"),
            keyboard_interrupt = TRUE,
+           rstudio_conn_tab = TRUE,
            ...) {
     
     # assert checks on parameters
@@ -160,9 +171,14 @@ setMethod(
               is.null(role_arn) || is.character(role_arn),
               is.character(role_session_name),
               is.numeric(duration_seconds),
-              is.logical(keyboard_interrupt))
+              is.logical(keyboard_interrupt),
+              is.character(json) || is.function(json),
+              is.logical(rstudio_conn_tab))
     
     athena_option_env$bigint <- big_int(match.arg(bigint))
+    athena_option_env$binary <- match.arg(binary)
+    athena_option_env$json <- if(is.character(json)) jsonlite_check(json[[1]]) else json
+    athena_option_env$rstudio_conn_tab <- rstudio_conn_tab
     
     encryption_option <- switch(encryption_option[1],
                                 "NULL" = NULL,

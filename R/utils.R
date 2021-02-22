@@ -18,27 +18,35 @@ is.s3_uri <- function(x) {
 
 # If Query is cancelled by keyboard interrupt stop AWS Athena process
 poll <- function(res){
-  tryCatch(.poll(res),
-           interrupt = function(i){
-             if(res@connection@info$keyboard_interrupt){
-               dbClearResult(res)
-               stop(sprintf("Query '%s' has been cancelled by user.", res@info$QueryExecutionId), call. = F)
-             }
-             else {
-               stop(sprintf("Query '%s' has been cancelled by user but will carry on running in AWS Athena", res@info$QueryExecutionId), call. = F)
-             }
-           }
+  tryCatch(
+    .poll(res),
+    interrupt = function(i){
+      if(res@connection@info$keyboard_interrupt){
+        dbClearResult(res)
+        stop(sprintf("Query '%s' has been cancelled by user.", res@info[["QueryExecutionId"]]), call. = F)
+      } else {
+        stop(sprintf("Query '%s' has been cancelled by user but will carry on running in AWS Athena", res@info[["QueryExecutionId"]]), call. = F)
+      }
+    }
   )
 }
 
 # holds functions until athena query competed
 .poll <- function(res){
-  class_poll <- res@connection@info$poll_interval
+  class_poll <- res@connection@info[["poll_interval"]]
   while (TRUE){
     poll_interval <- class_poll %||% rand_poll()
     tryCatch(query_execution <- res@connection@ptr$Athena$get_query_execution(QueryExecutionId = res@info$QueryExecutionId))
     if (query_execution$QueryExecution$Status$State %in% c("SUCCEEDED", "FAILED", "CANCELLED")){
-      return (query_execution)
+      # update info environment
+      res@info[["Query"]] <- query_execution[["QueryExecution"]][["Query"]]
+      res@info[["Status"]] <- query_execution[["QueryExecution"]][["Status"]][["State"]]
+      res@info[["StateChangeReason"]] <- query_execution[["QueryExecution"]][["Status"]][["StateChangeReason"]]
+      res@info[["StatementType"]] <- query_execution[["QueryExecution"]][["StatementType"]]
+      res@info[["WorkGroup"]] <- query_execution[["QueryExecution"]][["WorkGroup"]]
+      res@info[["OutputLocation"]] <- query_execution[["QueryExecution"]][["ResultConfiguration"]][["OutputLocation"]]
+      res@info[["Statistics"]] <- query_execution[["QueryExecution"]][["Statistics"]]
+      break
     } else {Sys.sleep(poll_interval)}
   }
 }
@@ -57,7 +65,7 @@ resource_active.AthenaConnection <- function(dbObj){
 }
 
 resource_active.AthenaResult <- function(dbObj){
-  if(length(dbObj@connection@ptr) !=0) return(TRUE) else (FALSE)
+  if(length(dbObj@info) !=0) return(TRUE) else (FALSE)
 }
 
 # set up athena request call
@@ -215,21 +223,28 @@ write_bin <- function(
 }
 
 # caching function to added metadata to cache data.table
-cache_query = function(poll_result){
-  cache_append = data.table("QueryId" = poll_result$QueryExecution$QueryExecutionId,
-                            "Query" = poll_result$QueryExecution$Query,
-                            "State"= poll_result$QueryExecution$Status$State,
-                            "StatementType"= poll_result$QueryExecution$StatementType,
-                            "WorkGroup" = poll_result$QueryExecution$WorkGroup)
-  new_query = fsetdiff(cache_append, athena_option_env$cache_dt, all = TRUE)
-  
+cache_query = function(res){
   # As Athena doesn't scanned data with Failed queries. Failed queries wont be cached: https://aws.amazon.com/athena/pricing/
-  if(nrow(new_query[get("State") != "FAILED"]) > 0) athena_option_env$cache_dt = head(rbind(cache_append, athena_option_env$cache_dt), athena_option_env$cache_size)
+  if(res@info$Status != "FAILED") {
+    cache_append = data.table("QueryId" = res@info[["QueryExecutionId"]],
+                              "Query" = res@info[["Query"]],
+                              "State"= res@info[["Status"]],
+                              "StatementType"= res@info[["StatementType"]],
+                              "WorkGroup" = res@info[["WorkGroup"]])
+    new_query = fsetdiff(cache_append, athena_option_env[["cache_dt"]], all = TRUE)
+    athena_option_env$cache_dt = head(
+      rbind(new_query, athena_option_env[["cache_dt"]]),
+      athena_option_env[["cache_size"]])
+  }
 }
 
 # check cached query ids
 check_cache = function(query, work_group){
-  query_id = athena_option_env$cache_dt[get("Query") == query & get("State") == "SUCCEEDED" & get("StatementType") == "DML" & get("WorkGroup") == work_group, get("QueryId")]
+  query_id = athena_option_env$cache_dt[(get("Query") == query &
+                                        get("State") == "SUCCEEDED" &
+                                        get("StatementType") == "DML" &
+                                        get("WorkGroup") == work_group),
+                                        get("QueryId")]
   if(length(query_id) == 0) return(NULL) else return(query_id[1])
 }
 
@@ -249,11 +264,13 @@ retry_api_call <- function(expr){
     if(inherits(resp, "error")){
       
       # stop retry if statement is an invalid request
-      if (grepl("InvalidRequestException", resp)) {stop(resp)}
+      if (grepl("InvalidRequestException", resp)) 
+        stop(resp)
       
       backoff_len <- runif(n=1, min=0, max=(2^i - 1))
       
-      if(!athena_option_env$retry_quiet) message(resp, "Request failed. Retrying in ", round(backoff_len, 1), " seconds...")
+      if(!athena_option_env$retry_quiet)
+        message(resp, "Request failed. Retrying in ", round(backoff_len, 1), " seconds...")
       
       Sys.sleep(backoff_len)
     } else {break}
@@ -261,50 +278,112 @@ retry_api_call <- function(expr){
   
   if (inherits(resp, "error")) stop(resp)
   
-  resp
+  return(resp)
 }
 
 
 # Create table With parameters
 ctas_sql_with <- function(partition = NULL, s3.location = NULL, file.type = "NULL", compress = TRUE){
   if(file.type!="NULL" || !is.null(s3.location) || !is.null(partition)){
-    FILE <- switch(file.type,
-                   "csv" = "format = 'TEXTFILE',\nfield_delimiter = ','",
-                   "tsv" = "format = 'TEXTFILE',\nfield_delimiter = '\t'",
-                   "parquet" = "format = 'PARQUET'",
-                   "json" = "format = 'JSON'",
-                   "orc" = "format = 'ORC'",
-                   "")
+    FILE <- switch(
+      file.type,
+      "csv" = "format = 'TEXTFILE',\nfield_delimiter = ','",
+      "tsv" = "format = 'TEXTFILE',\nfield_delimiter = '\t'",
+      "parquet" = "format = 'PARQUET'",
+      "json" = "format = 'JSON'",
+      "orc" = "format = 'ORC'",
+      "")
     
     COMPRESSION <- ""
     if (compress) {
-      if(file.type %in% c("tsv", "csv", "json")) warning("Can only compress parquet or orc files: https://docs.aws.amazon.com/athena/latest/ug/create-table-as.html", call. = FALSE)
-      COMPRESSION <- switch(file.type,
-                            "parquet" = ",\nparquet_compression = 'SNAPPY'",
-                            "orc" = ",\norc_compression = 'SNAPPY'",
-                            "")
+      if(file.type %in% c("tsv", "csv", "json"))
+        warning(
+          "Can only compress parquet or orc files: https://docs.aws.amazon.com/athena/latest/ug/create-table-as.html",
+          call. = FALSE)
+      COMPRESSION <- switch(
+        file.type,
+        "parquet" = ",\nparquet_compression = 'SNAPPY'",
+        "orc" = ",\norc_compression = 'SNAPPY'",
+        "")
     }
     
     LOCATION <- if(!is.null(s3.location)){
-      if(file.type == "NULL") paste0("external_location ='", s3.location, "'")
-      else paste0(",\nexternal_location ='", s3.location, "'")
+      if(file.type == "NULL") 
+        paste0("external_location ='", s3.location, "'")
+      else 
+        paste0(",\nexternal_location ='", s3.location, "'")
     } else ""
     
     PARTITION <- if(!is.null(partition)){
       partition <- paste(partition, collapse = "','")
-      if(is.null(s3.location) && file.type == "NULL") paste0("partitioned_by = ARRAY['",partition,"']")
-      else paste0(",\npartitioned_by = ARRAY['",partition,"']")
+      if(is.null(s3.location) && file.type == "NULL") 
+        paste0("partitioned_by = ARRAY['",partition,"']")
+      else 
+        paste0(",\npartitioned_by = ARRAY['",partition,"']")
     } else ""
     
     paste0("WITH (", FILE, COMPRESSION, LOCATION, PARTITION,")\n")
   } else ""
 }
 
-# split list into chunksize 1000
-splitList <- function(l){
-  chunks <- seq(1, length(l), 1000)
-  ll <- Map(function(i) list(), 1:length(chunks))
-  for (i in seq_along(chunks))
-    ll[[i]] <- l[chunks[i]:min(chunks[i]+999, length(l))]
+# check if jsonlite is present or not
+jsonlite_check <- function(method){
+  if(method == "auto") {
+    if (!requireNamespace("jsonlite", quietly = TRUE)) {
+      message('Info: `jsonlite` has not been detected, AWS Athena `json` data types will be returned as `character`.')
+      method <- "character"
+      }
+    }
+  return(method)
+}
+
+# get database list from glue catalog
+get_databases <- function(glue){
+  token <- NULL
+  data_list <- list()
+  while(!identical(token, character(0))){
+    retry_api_call(response <- glue$get_databases(NextToken = token))
+    data_list <- c(
+      data_list,
+      vapply(response[["DatabaseList"]],function(x) x[["Name"]], FUN.VALUE = character(1))
+    )
+    token <- response[["NextToken"]]
+  }
+  return(data_list)
+}
+
+# get list of tables from glue catalog
+get_table_list <- function(glue, schema){
+  token <- NULL
+  table_list <- list()
+  while(!identical(token, character(0))){
+    retry_api_call(response <- glue$get_tables(DatabaseName = schema, NextToken = token))
+    table_list <- c(
+      table_list, 
+      lapply(response[["TableList"]],
+             function(x) {list(DatabaseName = x[["DatabaseName"]],
+                               Name = x[["Name"]],
+                               TableType = x[["TableType"]])})
+    )
+    token <- response[["NextToken"]]
+  }
+  return(table_list)
+}
+
+# wrapper to return connection error when disconnected
+con_error_msg <- function(obj, msg = "Connection already closed."){
+  if (!dbIsValid(obj)) 
+    stop(msg, call. = FALSE)
+}
+
+# wrapper to detect database for paws api calls.
+db_detect <- function(conn, name){
+  ll <- list()
+  if(grepl("\\.", name)){
+    ll[["dbms.name"]] <- gsub("\\..*", "" , name)
+    ll[["table"]] <- gsub(".*\\.", "" , name)
+  } else {
+    ll[["dbms.name"]] <- conn@info[["dbms.name"]]
+    ll[["table"]] <- name}
   return(ll)
 }

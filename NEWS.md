@@ -1,7 +1,123 @@
+# noctua 2.0.0
+## API Change
+* `AthenaConnection` class: `ptr` and `info` slots changed from `list` to `environment` with in `AthenaConnect` class. Allows class to be updated by reference. Simplifies notation when viewing class from RStudio environment tab.
+* `AthenaResult` class: `info` slot changed from `list` to `environment`. Allows class to be updated by reference. 
+
+By utilising environments for `AthenaConnection` and `AthenaResult`, all `AthenaResult` classes created from `AthenaConnection` will point to the same `ptr` and `info` environments for it's connection. Previously `ptr` and `info` would make a copy. This means if it was modified it would not affect the child or parent class for example:
+
+```r
+# Old Method
+library(DBI)
+con <- dbConnect(noctua::athena(),
+                 rstudio_conn_tab = F)
+
+res <- dbExecute(con, "select 'helloworld'")
+
+# modifying parent class to influence child
+con@info$made_up <- "helloworld"
+
+# nothing happened
+res@connection@info$made_up
+# > NULL
+
+# modifying child class to influence parent
+res@connection@info$made_up <- "oh no!"
+
+# nothing happened
+con@info$made_up
+# > "helloworld"
+
+# New Method
+library(DBI)
+con <- dbConnect(noctua::athena(),
+                 rstudio_conn_tab = F)
+
+res <- dbExecute(con, "select 'helloworld'")
+
+# modifying parent class to influence child
+con@info$made_up <- "helloworld"
+
+# picked up change
+res@connection@info$made_up
+# > "helloworld"
+
+# modifying child class to influence parent
+res@connection@info$made_up <- "oh no!"
+
+# picked up change
+con@info$made_up
+# > "oh no!"
+```
+
+## New Feature
+* Added support to `AWS Athena` data types `[array, row, map, json, binary, ipaddress]` (#135). Conversion types can be changed through `dbConnect` and `noctua_options`.
+```r
+library(DBI)
+library(noctua)
+
+# default conversion methods
+con <- dbConnect(noctua::athena())
+
+# change json conversion method
+noctua_options(json = "character")
+noctua:::athena_option_env$json
+# [1] "character"
+
+# change json conversion to custom method
+noctua_options(json = jsonify::from_json)
+noctua:::athena_option_env$json
+# function (json, simplify = TRUE, fill_na = FALSE, buffer_size = 1024) 
+# {
+#   json_to_r(json, simplify, fill_na, buffer_size)
+# }
+# <bytecode: 0x7f823b9f6830>
+#   <environment: namespace:jsonify>
+
+# change bigint conversion without affecting custom json conversion methods
+noctua_options(bigint = "numeric")
+noctua:::athena_option_env$json
+# function (json, simplify = TRUE, fill_na = FALSE, buffer_size = 1024) 
+# {
+#   json_to_r(json, simplify, fill_na, buffer_size)
+# }
+# <bytecode: 0x7f823b9f6830>
+#   <environment: namespace:jsonify>
+
+noctua:::athena_option_env$bigint
+# [1] "numeric"
+
+# change binary conversion without affect, bigint or json methods
+noctua_options(binary = "character")
+noctua:::athena_option_env$json
+# function (json, simplify = TRUE, fill_na = FALSE, buffer_size = 1024) 
+# {
+#   json_to_r(json, simplify, fill_na, buffer_size)
+# }
+# <bytecode: 0x7f823b9f6830>
+#   <environment: namespace:jsonify>
+
+noctua:::athena_option_env$bigint
+# [1] "numeric"
+
+noctua:::athena_option_env$binary
+# [1] "character"
+
+# no conversion for json objects
+con2 <- dbConnect(noctua::athena(), json = "character")
+
+# use custom json parser
+con <- dbConnect(noctua::athena(), json = jsonify::from_json)
+```
+* Allow users to turn off RStudio Connection Tab when working in RStudio (#136). This can be done through parameter `rstudio_conn_tab` within `dbConnect`.
+
+## Bug Fix
+* `AWS Athena` uses `float` data type for the DDL only, `noctua` was wrongly parsing `float` data type back to R. Instead `AWS Athena` uses data type `real` in SQL functions like `select cast` https://docs.aws.amazon.com/athena/latest/ug/data-types.html. `noctua` now correctly parses `real` to R's data type `double` (#133)
+* Iterate through each token `AWS` returns to get all results from `AWS Glue` catalogue (#137)
+
 # noctua 1.10.0
 ## New Feature
 * Added optional formatting to `dbGetPartition`. This simply tidies up the default AWS Athena partition format.
-```
+```r
 library(DBI)
 library(noctua)
 con <- dbConnect(athena())
@@ -21,21 +137,21 @@ con <- dbConnect(noctua::athena(), bigint = "numeric")
 ```
 When switching between the different file parsers the `bigint` to be represented according to the file parser i.e. `data.table`: "integer64" -> `vroom`: "I".
 
-## Bug Fix:
+## Bug Fix
 * `dbRemoveTable`: Check if key has "." or ends with "/" before adding "/" to the end (#125)
 * Added `uuid` minimum version to fix issue (#128)
 
-## Documentation:
+## Documentation
 * Added note to dbRemoveTable doc string around aws athena table Location in Amazon S3.
 
 # noctua 1.9.1
-## Note:
+## Note
 * Added package checks to unit tests when testing a suggested dependency. This is to fix "CRAN Package Check Results for Package noctua" for operating system "r-patched-solaris-x86". Error message:
 ```
 Error: write_parquet requires the arrow package, please install it first and try again
 ```
 
-## Bug Fix:
+## Bug Fix
 * `dbRemoveTable` would error if AWS S3 files for Athena table have been removed:
 ```
 Error in seq.default(1, length(l), 1000) : wrong sign in 'by' argument
@@ -47,7 +163,7 @@ Failed to remove AWS S3 files from: "s3://{bucket}/{prefix}/". Please check if A
 ```
 
 # noctua 1.9.0
-## Minor Change:
+## Minor Change
 * `dbRemoveTable` now removes AWS S3 objects using `delete_objects` instead of `delete_object`. This allows `noctua` to delete AWS S3 files in batches. This will reduce the number of api calls to AWS and comes with a performance improvement.
 ```r
 library(DBI)
@@ -75,10 +191,10 @@ system.time({dbRemoveTable(con, "rm_tbl", confirm = T)})
 ```
 
 ## New Feature
-* Move `sql_escape_date` into `dplyr_integration.R` backend (RAthena: [# 121](https://github.com/DyfanJones/RAthena/issues/121)).
+* Move `sql_escape_date` into `dplyr_integration.R` backend ([RAthena: # 121](https://github.com/DyfanJones/RAthena/issues/121)).
 * Allow noctua to append to a static AWS s3 location using uuid
 
-## Bug Fix:
+## Bug Fix
 * parquet file.types now use parameter `use_deprecated_int96_timestamps` set to `TRUE`. This puts POSIXct data type in to `java.sql.Timestamp` compatible format, such as `yyyy-MM-dd HH:mm:ss[.f...]`. Thanks to Christian N Wolz for highlight this issue.
 * When more than 1000 files exist in the back of an Athena table. `dbRemoveTable` will ask the user twice to confirm if they wish to remove the backend files:
 ```
@@ -136,7 +252,7 @@ dbFetch(res, 5000)
 
 * When creating/appending partitions to a table, `dbWriteTable` opts to use `alter table` instead of standard `msck repair table`. This is to improve performance when appending to tables with high number of existing partitions.
 * `dbWriteTable` now allows json to be appended to json ddls created with the Openx-JsonSerDe library.
-* `dbConvertTable` brings `dplyr::compute` functionality to base package, allowing `noctua` to use the power of AWS Athena to convert tables and queries to more efficient file formats in AWS S3 (RAthena: [# 37](https://github.com/DyfanJones/RAthena/issues/37)).
+* `dbConvertTable` brings `dplyr::compute` functionality to base package, allowing `noctua` to use the power of AWS Athena to convert tables and queries to more efficient file formats in AWS S3 ([RAthena: # 37](https://github.com/DyfanJones/RAthena/issues/37)).
 * Extended `dplyr::compute` to give same functionality of `dbConvertTable`
 * Added `region_name` check before making a connection to AWS Athena ([RAthena: # 110](https://github.com/DyfanJones/RAthena/issues/110))
 
@@ -181,7 +297,7 @@ system.time(dbRemoveTable(con, "iris2", confirm = T))
 
 ```r
 library(DBI)
-con = dbConnect(RAthena::athena())
+con = dbConnect(noctua::athena())
 dbWriteTable(con, "iris2", iris, file.type = "json")
 dbGetQuery(con, "select * from iris2")
 ```
@@ -254,7 +370,7 @@ microbenchmark(writeBin_loop = write_bin(obj, tempfile()),
 # readr  2.291571  2.40495  2.496871  2.542544  2.558367  2.686921     5
 ```
 
-* Thanks to @OssiLehtinen for fixing date variables being incorrectly translated by `sql_translate_env` (RAthena: [# 44](https://github.com/DyfanJones/RAthena/issues/44))
+* Thanks to @OssiLehtinen for fixing date variables being incorrectly translated by `sql_translate_env` ([RAthena: # 44](https://github.com/DyfanJones/RAthena/issues/44))
 
 ```r
 # Before
@@ -277,14 +393,14 @@ paste("hi", "bye", sep = "-")
 ('hi'||'-'||'bye')
 ```
 
-* If table exists and parameter `append` set to `TRUE` then existing s3.location will be utilised (RAthena: [# 73](https://github.com/DyfanJones/RAthena/issues/73))
-* `db_compute` returned table name, however when a user wished to write table to another location (RAthena: [# 74](https://github.com/DyfanJones/RAthena/issues/74)). An error would be raised: `Error: SYNTAX_ERROR: line 2:6: Table awsdatacatalog.default.temp.iris does not exist` This has now been fixed with db_compute returning `dbplyr::in_schema`.
+* If table exists and parameter `append` set to `TRUE` then existing s3.location will be utilised ([RAthena: # 73](https://github.com/DyfanJones/RAthena/issues/73))
+* `db_compute` returned table name, however when a user wished to write table to another location ([RAthena: # 74](https://github.com/DyfanJones/RAthena/issues/74)). An error would be raised: `Error: SYNTAX_ERROR: line 2:6: Table awsdatacatalog.default.temp.iris does not exist` This has now been fixed with db_compute returning `dbplyr::in_schema`.
 
 ```r
 library(DBI)
 library(dplyr)
 
-con <- dbConnect(RAthena::athena())
+con <- dbConnect(noctua::athena())
 
 tbl(con, "iris") %>%
   compute(name = "temp.iris")
@@ -355,10 +471,10 @@ warning('Appended `file.type` is not compatible with the existing Athena DDL fil
 ```
 
 ## Bug fix
-* Due to issue highlighted by @OssiLehtinen in (RAthena: [# 50](https://github.com/DyfanJones/RAthena/issues/50)), special characters have issue being processed when using flat file in the backend.
-* Fixed issue where row.names not being correctly catered and returning NA in column names (RAthena: [# 41](https://github.com/DyfanJones/RAthena/issues/41))
+* Due to issue highlighted by @OssiLehtinen in ([RAthena: # 50](https://github.com/DyfanJones/RAthena/issues/50)), special characters have issue being processed when using flat file in the backend.
+* Fixed issue where row.names not being correctly catered and returning NA in column names ([RAthena: # 41](https://github.com/DyfanJones/RAthena/issues/41))
 * Fixed issue with `INTEGER` being incorrectly translated in `sql_translate_env.R`
-* Fixed issue where `as.character` was getting wrongly translated (RAthena: [# 45](https://github.com/DyfanJones/RAthena/issues/45))
+* Fixed issue where `as.character` was getting wrongly translated ([RAthena: # 45](https://github.com/DyfanJones/RAthena/issues/45))
 
 ## Unit Tests
 * Special characters have been added to unit test `data-transfer`
@@ -371,7 +487,7 @@ warning('Appended `file.type` is not compatible with the existing Athena DDL fil
 
 ## Minor Change
 * Added AWS_ATHENA_WORK_GROUP environmental variable support
-* Removed `tolower` conversion due to request (RAthena: [# 41](https://github.com/DyfanJones/RAthena/issues/41))
+* Removed `tolower` conversion due to request ([RAthena: # 41](https://github.com/DyfanJones/RAthena/issues/41))
 
 # noctua 1.3.0
 ## Major Change

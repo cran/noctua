@@ -22,7 +22,10 @@
   s3_staging_dir = NULL,
   region_name = NULL,
   bigint = c("integer64", "integer", "numeric", "character"),
+  binary = c("raw", "character"),
+  json = c("auto", "character"),
   keyboard_interrupt = TRUE,
+  rstudio_conn_tab = TRUE,
   ...
 )
 }
@@ -56,7 +59,7 @@ To configure AWS CLI please refer to: \href{https://docs.aws.amazon.com/cli/late
 
 \item{role_arn}{The Amazon Resource Name (ARN) of the role to assume (such as \code{arn:aws:sts::123456789012:assumed-role/role_name/role_session_name})}
 
-\item{role_session_name}{An identifier for the assumed role session. By default `RAthena` creates a session name \code{sprintf("RAthena-session-\%s", as.integer(Sys.time()))}}
+\item{role_session_name}{An identifier for the assumed role session. By default `noctua` creates a session name \code{sprintf("noctua-session-\%s", as.integer(Sys.time()))}}
 
 \item{duration_seconds}{The duration, in seconds, of the role session. The value can range from 900 seconds (15 minutes) up to the maximum session duration setting for the role. 
 This setting can have a value from 1 hour to 12 hours. By default duration is set to 3600 seconds (1 hour).}
@@ -70,7 +73,18 @@ AWS region codes (region code example: Region = EU (Ireland)     \code{ region_n
 default is [bit64::integer64], which allows the full range of 64 bit
 integers.}
 
+\item{binary}{The R type that [binary/varbinary] types should be mapped to,
+default is [raw]. If the mapping fails R will resort to [character] type.
+To ignore data type conversion set to ["character"].}
+
+\item{json}{Attempt to converts AWS Athena data types [arrays, json] using \code{jsonlite:parse_json}. If the mapping fails R will resort to [character] type.
+Custom Json parsers can be provide by using a function with data frame parameter.
+To ignore data type conversion set to ["character"].}
+
 \item{keyboard_interrupt}{Stops AWS Athena process when R gets a keyboard interrupt, currently defaults to \code{TRUE}}
+
+\item{rstudio_conn_tab}{Optional to get AWS Athena Schema and display it in RStudio's Connections Tab.
+Default set to \code{TRUE}.}
 
 \item{...}{other parameters for \code{paws} session}
 }
