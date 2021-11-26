@@ -1,3 +1,12 @@
+# noctua 2.4.0
+## Feature:
+* Add support `dbplyr` 2.0.0 backend API.
+* Add method to set unload on a package level to allow `dplyr` to benefit from `AWS Athena unload` methods (#174).
+
+## Bug Fix:
+* Ensure `dbGetQuery`, `dbExecute`, `dbSendQuery`, `dbSendStatement` work on older versions of `R` (#170). Thanks to @tyner for identifying issue.
+* Caching would fail when statement wasn't a character (#171). Thanks to @ramnathv for identifying issue.
+
 # noctua 2.3.0
 ## Feature:
 * Add support to [`AWS Athena UNLOAD`](https://docs.aws.amazon.com/athena/latest/ug/unload.html) (#160). This is to take advantage of read/write speed `parquet` has to offer.
