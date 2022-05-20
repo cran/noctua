@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function(e) {
     </style>
 
 
+
 <style type="text/css">
   code {
     white-space: pre;
@@ -339,8 +340,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 can be returned back to the caller in the case of transient network or
 service issues. To avoid this <code>noctua</code> has implemented a
 retry method with exponential backoff. This technique increases the
-reliability of the application with connecting to <code>AWS
-Athena</code>.</p>
+reliability of the application with connecting to
+<code>AWS Athena</code>.</p>
 <div id="how-to-handle-noctuas-retry" class="section level1">
 <h1>How to handle <code>noctua</code>’s retry?</h1>
 <p>By default <code>noctua</code> performs a retry noisily, this means

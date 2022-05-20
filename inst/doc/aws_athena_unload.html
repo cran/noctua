@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function(e) {
     </style>
 
 
+
 <style type="text/css">
   code {
     white-space: pre;
@@ -519,8 +520,8 @@ will use it when applicable.</p>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>dbi_noaa <span class="ot">=</span> <span class="fu">dbGetQuery</span>(con, <span class="st">&quot;select * from awswrangler_test.noaa&quot;</span>)</span></code></pre></div>
 <p>This also give benefits for when using <code>dplyr</code>
 functionality. When setting <code>noctua_options(unload=TRUE)</code> all
-<code>dplyr</code> lazy evaluation will start using <code>AWS Athena
-unload</code>.</p>
+<code>dplyr</code> lazy evaluation will start using
+<code>AWS Athena unload</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>tbl_noaa <span class="ot">=</span> <span class="fu">tbl</span>(con, dbplyr<span class="sc">::</span><span class="fu">in_schema</span>(<span class="st">&quot;awswrangler_test&quot;</span>, <span class="st">&quot;noaa&quot;</span>))</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>tbl_noaa <span class="sc">%&gt;%</span> <span class="fu">collect</span>()</span>

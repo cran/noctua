@@ -5,9 +5,27 @@ context("Athena Metadata")
 # Sys.getenv("noctua_s3_query"): "s3://path/to/query/bucket/"
 # Sys.getenv("noctua_s3_tbl"): "s3://path/to/bucket/"
 
-df_col_info <- data.frame(field_name = c("w","x","y", "z", "timestamp"),
-                          type = c("timestamp", "integer", "varchar", "boolean", "varchar"), stringsAsFactors = F)
-con_info = c("profile_name", "s3_staging","dbms.name","work_group", "poll_interval","encryption_option","kms_key","expiration", "keyboard_interrupt", "region_name", "paws", "noctua", "timezone")
+df_col_info <- data.frame(
+  field_name = c("w","x","y", "z", "timestamp"),
+  type = c("timestamp", "integer", "varchar", "boolean", "varchar"),
+  stringsAsFactors = F
+)
+con_info = c(
+  "profile_name",
+  "s3_staging",
+  "dbms.name",
+  "work_group",
+  "poll_interval",
+  "encryption_option",
+  "kms_key",
+  "expiration",
+  "keyboard_interrupt",
+  "region_name",
+  "paws",
+  "noctua",
+  "timezone",
+  "endpoint_override"
+)
 col_info_exp = c("w","x","y", "z", "timestamp")
 
 test_that("Returning meta data",{
@@ -80,4 +98,30 @@ test_that("test connection when timezone is NULL", {
   con <- dbConnect(athena(), timezone = NULL)
   
   expect_equal(con@info$timezone, "UTC")
+})
+
+test_that("test endpoints", {
+  skip_if_no_env()
+  
+  con1 = dbConnect(athena(), endpoint_override = "https://athena.eu-west-2.amazonaws.com/")
+  con2 = dbConnect(
+    athena(),
+    region_name = "us-east-2",
+    
+    # Change default endpoints:
+    # athena: "https://athena.us-east-2.amazonaws.com"
+    # s3: "https://s3.us-east-2.amazonaws.com"
+    # glue: "https://glue.us-east-2.amazonaws.com"
+    
+    endpoint_override = list(
+      athena = "https://athena-fips.us-east-2.amazonaws.com/",
+      s3 = "https://s3-fips.us-east-2.amazonaws.com/",
+      glue = "https://glue-fips.us-east-2.amazonaws.com/"
+    )
+  )
+  
+  expect_equal(as.character(con1@ptr$Athena$.internal$config$endpoint), "https://athena.eu-west-2.amazonaws.com/")
+  expect_equal(as.character(con2@ptr$Athena$.internal$config$endpoint), "https://athena-fips.us-east-2.amazonaws.com/")
+  expect_equal(as.character(con2@ptr$S3$.internal$config$endpoint), "https://s3-fips.us-east-2.amazonaws.com/")
+  expect_equal(as.character(con2@ptr$glue$.internal$config$endpoint), "https://glue-fips.us-east-2.amazonaws.com/")
 })
