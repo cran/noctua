@@ -354,7 +354,7 @@ reliability of the application with connecting to
 it will report the exception it has encountered and let the user know
 how long <code>noctua</code> will wait until it retries again. This is
 reported in the following format:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>{expection message} <span class="sc">+</span> <span class="st">&quot;Request failed. Retrying in &quot;</span> <span class="sc">+</span> {wait time}  <span class="sc">+</span> <span class="st">&quot; seconds...&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>{expection message} <span class="sc">+</span> <span class="st">&quot;Request failed. Retrying in &quot;</span> <span class="sc">+</span> {wait time}  <span class="sc">+</span> <span class="st">&quot; seconds...&quot;</span></span></code></pre></div>
 <p>This is to keep the user informed in what <code>noctua</code> is
 doing behind the scenes.</p>
 <div id="configure" class="section level2">
@@ -367,25 +367,25 @@ perform. <code>retry_quiet</code> tells <code>noctua</code> to retry
 quietly or not.</p>
 <p>We can change the default retry settings so that <code>noctua</code>
 will retry 10 times and do it quietly:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">noctua_options</span>(<span class="at">retry =</span> <span class="dv">10</span>, <span class="at">retry_quiet =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">noctua_options</span>(<span class="at">retry =</span> <span class="dv">10</span>, <span class="at">retry_quiet =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 <p>If you wish to create your own custom retry function just set the
 <code>retry</code> to 0:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(noctua)</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># connection to AWS Athena</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>con <span class="ot">=</span> <span class="fu">dbConnect</span>(<span class="fu">athena</span>())</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop noctua retrying</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="fu">noctua_options</span>(<span class="at">retry =</span> <span class="dv">0</span>)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># build your own custom retry function</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>custom_retry <span class="ot">=</span> <span class="cf">function</span>(x){</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># your custom retry method</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co"># apply your own retry function</span></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="fu">custom_retry</span>(<span class="fu">dbGetQuery</span>(con, <span class="st">&quot;select ...&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">library</span>(noctua)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># connection to AWS Athena</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>con <span class="ot">=</span> <span class="fu">dbConnect</span>(<span class="fu">athena</span>())</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># Stop noctua retrying</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">noctua_options</span>(<span class="at">retry =</span> <span class="dv">0</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># build your own custom retry function</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>custom_retry <span class="ot">=</span> <span class="cf">function</span>(x){</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="co"># your custom retry method</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>}</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># apply your own retry function</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="fu">custom_retry</span>(<span class="fu">dbGetQuery</span>(con, <span class="st">&quot;select ...&quot;</span>))</span></code></pre></div>
 </div>
 </div>
 <div id="requests" class="section level1">

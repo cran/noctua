@@ -224,54 +224,13 @@ cred_set <- function(aws_access_key_id,
 }
 
 # Format DataScannedInBytes to a more readable format:
-data_scanned <-
-  function(x) {
+data_scanned <- function(x) {
     base <- 1024
     units_map <- c("B", "KB", "MB", "GB", "TB", "PB")
     power <- if (x <= 0) 0L else min(as.integer(log(x, base = base)), length(units_map) - 1L)
     unit <- units_map[power + 1L]
     if (power == 0) unit <- "Bytes"
     paste(round(x / base^power, digits = 2), unit)
-  }
-
-# Write large raw connections in chunks
-write_bin <- function(value,
-                      filename,
-                      chunk_size = 2^31 - 2) {
-  # if readr is avialable then use readr::write_file else loop writeBin
-  if (requireNamespace("readr", quietly = TRUE)) {
-    write_file <- pkg_method("write_file", "readr")
-    write_file(value, filename)
-    return(invisible(TRUE))
-  }
-  base_write_raw(value, filename, chunk_size)
-  return(invisible(TRUE))
-}
-
-base_write_raw <- function(obj,
-                           filename,
-                           chunk_size = 2^31 - 2) { # Only 2^31 - 1 bytes can be written in a single call
-  # Open for reading and appending.
-  con <- file(filename, "a+b")
-  on.exit(close(con))
-
-  # If R version is 4.0.0 + then don't need to chunk writeBin
-  # https://github.com/HenrikBengtsson/Wishlist-for-R/issues/97
-  if (getRversion() > R_system_version("4.0.0")) {
-    writeBin(obj, con)
-  } else {
-    max_len <- length(obj)
-    start <- seq(1, max_len, chunk_size)
-    end <- c(start[-1] - 1, max_len)
-
-    if (length(start) == 1) {
-      writeBin(obj, con)
-    } else {
-      sapply(seq_along(start), function(i) {
-        writeBin(obj[start[i]:end[i]], con)
-      })
-    }
-  }
 }
 
 # caching function to added metadata to cache data.table
@@ -412,41 +371,32 @@ jsonlite_check <- function(method) {
   return(method)
 }
 
-# get database list from glue catalog
-get_databases <- function(glue) {
+# list catalog
+list_catalogs <- function(client) {
   token <- NULL
   data_list <- list()
   i <- 1
   while (!identical(token, character(0))) {
-    retry_api_call(response <- glue$get_databases(NextToken = token))
-    data_list[[i]] <- vapply(response[["DatabaseList"]], function(x) x[["Name"]], FUN.VALUE = character(1))
+    response <- client$list_data_catalogs(NextToken = token)
+    data_list[[i]] <- response[["DataCatalogsSummary"]]
     token <- response[["NextToken"]]
     i <- i + 1
   }
-  return(unlist(data_list, recursive = FALSE, use.names = FALSE))
+  return(as.character(do.call(rbind, unlist(data_list, recursive = F))[, "CatalogName"]))
 }
 
-# get list of tables from glue catalog
-get_table_list <- function(glue, schema) {
+# list database
+list_schemas <- function(client, catalog) {
   token <- NULL
-  table_list <- list()
+  data_list <- list()
   i <- 1
   while (!identical(token, character(0))) {
-    retry_api_call(response <- glue$get_tables(DatabaseName = schema, NextToken = token))
-    table_list[[i]] <- lapply(
-      response[["TableList"]],
-      function(x) {
-        list(
-          DatabaseName = x[["DatabaseName"]],
-          Name = x[["Name"]],
-          TableType = x[["TableType"]]
-        )
-      }
-    )
+    response <- client$list_databases(CatalogName = catalog, NextToken = token)
+    data_list[[i]] <- response[["DatabaseList"]]
     token <- response[["NextToken"]]
     i <- i + 1
   }
-  return(unlist(table_list, recursive = FALSE, use.names = FALSE))
+  return(as.character(do.call(rbind, unlist(data_list, recursive = F))[, "Name"]))
 }
 
 # wrapper to return connection error when disconnected
@@ -458,15 +408,14 @@ con_error_msg <- function(obj, msg = "Connection already closed.") {
 
 # wrapper to detect database for paws api calls.
 db_detect <- function(conn, name) {
-  ll <- list()
-  if (grepl("\\.", name)) {
-    ll[["dbms.name"]] <- gsub("\\..*", "", name)
-    ll[["table"]] <- gsub(".*\\.", "", name)
-  } else {
-    ll[["dbms.name"]] <- conn@info[["dbms.name"]]
-    ll[["table"]] <- name
-  }
-  return(ll)
+  parts <- strsplit(name, ".", fixed = T)[[1]]
+  db_components <- switch(length(parts),
+    list(conn@info[["db.catalog"]], conn@info[["dbms.name"]], parts),
+    as.list(c(conn@info[["db.catalog"]], parts)),
+    as.list(parts)
+  )
+  names(db_components) <- c("db.catalog", "dbms.name", "table")
+  return(db_components)
 }
 
 athena_unload <- function() {
@@ -511,4 +460,24 @@ set_endpoints <- function(endpoint_override) {
 
 str_count <- function(str, pattern) {
   return(lengths(regmatches(str, gregexpr(pattern, str))))
+}
+
+db_quote_identifier <- function (x, ...) {
+  if (is(x, "SQL")) 
+    return(x)
+  if (is(x, "Id")) {
+    return(SQL(paste0(x@name, collapse = ".")))
+  }
+  if (!is.character(x)) 
+    stop("x must be character or SQL", call. = FALSE)
+  if (any(is.na(x))) {
+    stop("Cannot pass NA to dbQuoteIdentifier()", call. = FALSE)
+  }
+  x <- gsub("\"", "\"\"", enc2utf8(x))
+  if (length(x) == 0L) {
+    SQL(character(), names = names(x))
+  }
+  else {
+    SQL(paste("\"", x, "\"", sep = ""), names = names(x))
+  }
 }

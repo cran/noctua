@@ -25,10 +25,7 @@
     ))
 
     # process returned list
-    output <- lapply(
-      result[["ResultSet"]][["Rows"]],
-      function(x) (sapply(x$Data, function(x) if (length(x) == 0) NA else x))
-    )
+    output <- do.call(rbind, result[["ResultSet"]][["Rows"]])
     suppressWarnings(staging_dt <- rbindlist(output, use.names = FALSE))
 
     # remove colnames from first row
@@ -59,8 +56,8 @@
   res@info[["NextToken"]] <- result[["NextToken"]]
 
   # replace names with actual names
-  Names <- sapply(result_class, function(x) x[["Name"]])
-  colnames(dt) <- Names
+  Names <- do.call(rbind, result_class)[,"Name"]
+  colnames(dt) <- as.character(Names)
 
   # convert data.table to tibble if using vroom as backend
   if (inherits(athena_option_env[["file_parser"]], "athena_vroom")) {
@@ -123,11 +120,9 @@
 
   # connect to s3 and create a bucket object
   # download athena output
-  retry_api_call(obj <- res@connection@ptr$S3$get_object(
-    Bucket = result_info[["bucket"]], Key = result_info[["key"]]
+  retry_api_call(res@connection@ptr$S3$download_file(
+    Bucket = result_info[["bucket"]], Key = result_info[["key"]], Filename = File
   ))
-
-  write_bin(obj$Body, File)
 
   if (grepl("\\.csv$", result_info[["key"]])) {
     output <- athena_read(

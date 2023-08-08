@@ -388,19 +388,19 @@ format</li>
 <div id="upload-data-in-delimited-format" class="section level2">
 <h2>Upload Data in delimited format</h2>
 <p>Uploading Data in delimited format is the easiest method.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(noctua)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(<span class="fu">athena</span>())</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># create a temporary database to upload data into</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">dbExecute</span>(con, <span class="st">&quot;CREATE IF NOT EXISTS DATABASE temp&quot;</span>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dbClearResult</span>(res)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>iris2 <span class="ot">&lt;-</span> iris</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>iris2<span class="sc">$</span>time_stamp <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">Sys.Date</span>(), <span class="st">&quot;%Y%m%d&quot;</span>)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">dbWriteTable</span>(con, <span class="st">&quot;temp.iris_delim&quot;</span>, iris2)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(noctua)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(<span class="fu">athena</span>())</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># create a temporary database to upload data into</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">dbExecute</span>(con, <span class="st">&quot;CREATE IF NOT EXISTS DATABASE temp&quot;</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="fu">dbClearResult</span>(res)</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>iris2 <span class="ot">&lt;-</span> iris</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>iris2<span class="sc">$</span>time_stamp <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">Sys.Date</span>(), <span class="st">&quot;%Y%m%d&quot;</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="fu">dbWriteTable</span>(con, <span class="st">&quot;temp.iris_delim&quot;</span>, iris2)</span></code></pre></div>
 <p>However delimited file format isn’t the most cost effective when it
 comes to using AWS Athena. To overcome this we can convert this by using
 AWS Athena.</p>
@@ -408,51 +408,51 @@ AWS Athena.</p>
 <div id="convert-data-into-parquet-or-orc" class="section level2">
 <h2>Convert Data into Parquet or ORC</h2>
 <p>Converting table to a non-partitioned Parquet or ORC format.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># convert to parquet</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_parquet&quot;</span>,</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;parquet&quot;</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>               </span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># convert to orc</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_orc&quot;</span>,</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;orc&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># convert to parquet</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_parquet&quot;</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;parquet&quot;</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>               </span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># convert to orc</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_orc&quot;</span>,</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;orc&quot;</span>)</span></code></pre></div>
 <p><strong>NOTE:</strong> By default <code>dbConvertTable</code>
 compresses Parquet/ ORC format using <code>snappy</code>
 compression.</p>
 <p><code>noctua</code> goes a step further by allowing tables to be
 converted with partitions.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># convert to parquet with partition time_stamp</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_parquet_partition&quot;</span>,</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>,</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;parquet&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># convert to parquet with partition time_stamp</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>               <span class="at">obj =</span> <span class="st">&quot;temp.iris_delim&quot;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>               <span class="at">name =</span> <span class="st">&quot;iris_parquet_partition&quot;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>               <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>               <span class="at">file.type =</span> <span class="st">&quot;parquet&quot;</span>)</span></code></pre></div>
 <p><code>noctua</code> even allows SQL queries to be converted into
 desired file format:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">obj =</span> <span class="fu">SQL</span>(<span class="st">&quot;select </span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="st">                          Sepal_Length,</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="st">                          Sepal_Width,</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="st">                          date_format(current_date, &#39;%Y%m%d&#39;) as time_stamp </span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">                        from temp.iris_delim&quot;</span>),</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>              <span class="at">name =</span> <span class="st">&quot;iris_orc_partition&quot;</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">file.type =</span> <span class="st">&quot;orc&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">dbConvertTable</span>(con,</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>              <span class="at">obj =</span> <span class="fu">SQL</span>(<span class="st">&quot;select </span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="st">                          Sepal_Length,</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="st">                          Sepal_Width,</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="st">                          date_format(current_date, &#39;%Y%m%d&#39;) as time_stamp </span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="st">                        from temp.iris_delim&quot;</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>              <span class="at">name =</span> <span class="st">&quot;iris_orc_partition&quot;</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>              <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>              <span class="at">file.type =</span> <span class="st">&quot;orc&quot;</span>)</span></code></pre></div>
 </div>
 <div id="insert-into-table-for-etl-processes" class="section level2">
 <h2>Insert into table for ETL processes</h2>
 <p>As we have created partitioned data, we can easily insert into:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>res <span class="ot">&lt;-</span> </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">dbExecute</span>(con, <span class="st">&quot;insert into iris_orc_partition</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="st">                  select </span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="st">                    Sepal_Length,</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="st">                    Sepal_Width, </span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="st">                    date_format(date_add(&#39;date&#39;, 1, current_date) , &#39;%Y%m%d&#39;) time_stamp </span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="st">                  from temp.iris_delim&quot;</span>)</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dbClearResult</span>(res)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>res <span class="ot">&lt;-</span> </span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">dbExecute</span>(con, <span class="st">&quot;insert into iris_orc_partition</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="st">                  select </span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="st">                    Sepal_Length,</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="st">                    Sepal_Width, </span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="st">                    date_format(date_add(&#39;date&#39;, 1, current_date) , &#39;%Y%m%d&#39;) time_stamp </span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="st">                  from temp.iris_delim&quot;</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">dbClearResult</span>(res)</span></code></pre></div>
 <p>What this all means is that you can create ETL processes by uploading
 data in basic file format (delimited), and then converting / inserting
 into the prefer file format.</p>
@@ -462,17 +462,17 @@ into the prefer file format.</p>
 <p>The good news doesn’t stop there, <code>noctua</code> integrates with
 <code>dplyr</code> to allow converting to be done through
 <code>dplyr</code>.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>iris_tbl <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, dbplyr<span class="sc">::</span><span class="fu">in_schema</span>(<span class="st">&quot;temp&quot;</span>, <span class="st">&quot;iris_delim&quot;</span>))</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>r_date <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">Sys.Date</span>(), <span class="st">&quot;%Y%m%d&quot;</span>)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>iris_tbl <span class="sc">%&gt;%</span> </span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(petal_length,</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>         petal_width) <span class="sc">%&gt;%</span> </span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_stamp =</span> r_date) <span class="sc">%&gt;%</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">compute</span>(<span class="st">&quot;iris_dplyr_parquet&quot;</span>, <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>, <span class="at">file_type =</span> <span class="st">&quot;parquet&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>iris_tbl <span class="ot">&lt;-</span> <span class="fu">tbl</span>(con, dbplyr<span class="sc">::</span><span class="fu">in_schema</span>(<span class="st">&quot;temp&quot;</span>, <span class="st">&quot;iris_delim&quot;</span>))</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>r_date <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">Sys.Date</span>(), <span class="st">&quot;%Y%m%d&quot;</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>iris_tbl <span class="sc">%&gt;%</span> </span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="fu">select</span>(petal_length,</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>         petal_width) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_stamp =</span> r_date) <span class="sc">%&gt;%</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>  <span class="fu">compute</span>(<span class="st">&quot;iris_dplyr_parquet&quot;</span>, <span class="at">partition =</span> <span class="st">&quot;time_stamp&quot;</span>, <span class="at">file_type =</span> <span class="st">&quot;parquet&quot;</span>)</span></code></pre></div>
 </div>
 </div>
 <div id="reading-material" class="section level1">

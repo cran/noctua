@@ -4,9 +4,12 @@
 \name{dbRemoveTable}
 \alias{dbRemoveTable}
 \alias{dbRemoveTable,AthenaConnection,character-method}
+\alias{dbRemoveTable,AthenaConnection,Id-method}
 \title{Remove table from Athena}
 \usage{
 \S4method{dbRemoveTable}{AthenaConnection,character}(conn, name, delete_data = TRUE, confirm = FALSE, ...)
+
+\S4method{dbRemoveTable}{AthenaConnection,Id}(conn, name, delete_data = TRUE, confirm = FALSE, ...)
 }
 \arguments{
 \item{conn}{A \linkS4class{DBIConnection} object, as returned by
@@ -36,7 +39,8 @@ to avoid deleting other S3 files when the table's definition points to the root 
 Removes Athena table but does not remove the data from Amazon S3 bucket.
 }
 \note{
-If you are having difficulty removing AWS S3 files please check if the AWS S3 location following AWS best practises: \href{https://docs.aws.amazon.com/athena/latest/ug/tables-location-format.html}{Table Location in Amazon S3}
+If you are having difficulty removing AWS S3 files please check if the
+AWS S3 location following AWS best practises: \href{https://docs.aws.amazon.com/athena/latest/ug/tables-location-format.html}{Table Location in Amazon S3}
 }
 \examples{
 \dontrun{

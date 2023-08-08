@@ -1,3 +1,16 @@
+# noctua 2.6.1.9000
+## Feature:
+* Add catalog support (#194)
+* fix `dbExistsTable` to catch update AWS error message.
+* add support to `dbplyr 2.3.3.9000+`
+
+## Bug Fix:
+* Can now write/append an empty data frame (#200, @mgirlich).
+
+## Internals:
+* Remove AWS calls to AWS Glue
+* Remove reader soft dependency
+
 # noctua 2.6.1
 ## Bug Fix:
 * Prevent assuming role from `AWS_ROLE_ARN`. This caused confusing when connecting through web identity ([RAthena # 177](https://github.com/DyfanJones/RAthena/issues/177))
